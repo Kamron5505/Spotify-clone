@@ -14,13 +14,17 @@ const PlayerContextProvider = (props) => {
         currentTime: { minute: 0, second: 0 },
         totalTime: { minute: 0, second: 0 },
     });
-
     const play = () => {
-        if (audioRef.current) {
-            audioRef.current.play().catch(() => { });
+        try {
+            audioRef.current.play();
             setPlayStatus(true);
+        } catch (err) {
+            console.log("Play interrupted:", err);
         }
     };
+
+
+
 
     const pause = () => {
         if (audioRef.current) {
@@ -38,6 +42,22 @@ const PlayerContextProvider = (props) => {
         audioRef.current.currentTime = (clickX / width) * duration;
         if (seekBar.current) {
             seekBar.current.style.width = `${(clickX / width) * 100}%`;
+        }
+    };
+
+    const playWithId = (id) => {
+        const song = songsData.find((s) => s.id === id);
+        if (!song) return;
+
+        if (audioRef.current) audioRef.current.pause();
+        audioRef.current = new Audio(song.file);
+
+        try {
+            audioRef.current.play();
+            setTrack(song);
+            setPlayStatus(true);
+        } catch (err) {
+            console.log("Play interrupted:", err);
         }
     };
 
@@ -80,6 +100,7 @@ const PlayerContextProvider = (props) => {
         play,
         pause,
         seekSong,
+        playWithId,
     };
 
     return (
