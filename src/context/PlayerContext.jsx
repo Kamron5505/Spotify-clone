@@ -24,6 +24,31 @@ const PlayerContextProvider = (props) => {
     };
 
 
+    const next = () => {
+        const currentIndex = songsData.findIndex(s => s.id === track.id);
+        const nextIndex = (currentIndex + 1) % songsData.length;
+        const song = songsData[nextIndex];
+
+        if (!audioRef.current) return;
+        audioRef.current.pause();
+        audioRef.current.src = song.file;
+        audioRef.current.play();
+        setTrack(song);
+        setPlayStatus(true);
+    };
+
+    const previous = () => {
+        const currentIndex = songsData.findIndex(s => s.id === track.id);
+        const prevIndex = (currentIndex - 1 + songsData.length) % songsData.length;
+        const song = songsData[prevIndex];
+
+        if (!audioRef.current) return;
+        audioRef.current.pause();
+        audioRef.current.src = song.file;
+        audioRef.current.play();
+        setTrack(song);
+        setPlayStatus(true);
+    };
 
 
     const pause = () => {
@@ -101,6 +126,8 @@ const PlayerContextProvider = (props) => {
         pause,
         seekSong,
         playWithId,
+        next,
+        previous,
     };
 
     return (
