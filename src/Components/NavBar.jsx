@@ -1,56 +1,57 @@
-import React from 'react'
-import { assets } from '../assets/assets'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useContext } from "react";
+import { assets } from "../assets/assets";
+import { useNavigate } from "react-router-dom";
+import { PlayerContext } from "../context/PlayerContext";
+import usePWAInstall from "../hooks/usePWAInstall";
 
 const NavBar = () => {
-    const navigate = useNavigate()
+    const navigate = useNavigate();
+    const [showModal, setShowModal] = useState(false);
+    const { setIsPremium } = useContext(PlayerContext);
+    const { installApp, isInstalled } = usePWAInstall();
 
     return (
         <>
-            <div className='w-full flex justify-between items-center font-semibold'>
-                {/* Стрелки */}
+            <div className="w-full flex justify-between items-center font-semibold">
                 <div className="flex items-center gap-2">
                     <img
                         onClick={() => navigate(-1)}
-                        className='w-8 bg-black p-2 rounded-2xl cursor-pointer hover:bg-[#1f1f1f] transition'
+                        className="w-8 bg-black p-2 rounded-2xl cursor-pointer hover:bg-[#1f1f1f] transition"
                         src={assets.arrow_left}
                         alt="Назад"
                     />
                     <img
                         onClick={() => navigate(1)}
-                        className='w-8 bg-black p-2 rounded-2xl cursor-pointer hover:bg-[#1f1f1f] transition'
+                        className="w-8 bg-black p-2 rounded-2xl cursor-pointer hover:bg-[#1f1f1f] transition"
                         src={assets.arrow_right}
                         alt="Вперёд"
                     />
                 </div>
 
-                {/* Кнопки справа */}
-                <div className='flex items-center gap-4'>
-                    <p className='bg-white text-black text-[15px] px-4 py-1 rounded-2xl hidden md:block cursor-pointer hover:bg-gray-200 transition'>
+                <div className="flex items-center gap-4">
+                    <p
+                        onClick={() => setShowModal(true)}
+                        className="bg-white text-black text-[15px] px-4 py-1 rounded-2xl hidden md:block cursor-pointer hover:bg-gray-200 transition"
+                    >
                         Explore Premium
                     </p>
-                    <p className='bg-black border border-gray-600 py-1 px-3 rounded-2xl text-[15px] cursor-pointer hover:bg-[#1f1f1f] transition'>
-                        Install App
-                    </p>
-                    <p className='bg-purple-500 text-black w-7 h-7 rounded-full flex items-center justify-center font-bold'>
+
+                    {!isInstalled && (
+                        <p
+                            onClick={installApp}
+                            className="bg-black border border-gray-600 py-1 px-3 rounded-2xl text-[15px] cursor-pointer hover:bg-[#1f1f1f] transition"
+                        >
+                            Install App
+                        </p>
+                    )}
+
+                    <p className="bg-purple-500 text-black w-7 h-7 rounded-full flex items-center justify-center font-bold">
                         G
                     </p>
                 </div>
             </div>
-
-            <div className='flex items-center gap-2 mt-4'>
-                <p className='bg-white text-black px-4 py-1 rounded-2xl cursor-pointer font-medium'>
-                    All
-                </p>
-                <p className='bg-black px-4 py-1 rounded-2xl cursor-pointer hover:bg-[#1f1f1f] transition'>
-                    Music
-                </p>
-                <p className='bg-black px-4 py-1 rounded-2xl cursor-pointer hover:bg-[#1f1f1f] transition'>
-                    Podcast
-                </p>
-            </div>
         </>
-    )
-}
+    );
+};
 
-export default NavBar
+export default NavBar;
