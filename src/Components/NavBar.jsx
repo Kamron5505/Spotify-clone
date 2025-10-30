@@ -29,13 +29,6 @@ const NavBar = () => {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <p
-                        onClick={() => setShowModal(true)}
-                        className="bg-white text-black text-[15px] px-4 py-1 rounded-2xl hidden md:block cursor-pointer hover:bg-gray-200 transition"
-                    >
-                        Explore Premium
-                    </p>
-
                     {!isInstalled && (
                         <p
                             onClick={installApp}
