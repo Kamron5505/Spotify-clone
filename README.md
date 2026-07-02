@@ -1,9 +1,8 @@
 <div align="center">
 
 # 🎵 Spotify Clone
-
 <p align="center">
-  <img src="./public/cover.png" alt="Spotify Clone Banner" width="100%">
+  <img src="https://raw.githubusercontent.com/Kamron5505/Spotify-clone/main/public/cover.png" width="100%">
 </p>
 <br>
 
