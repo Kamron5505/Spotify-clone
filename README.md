@@ -2,8 +2,9 @@
 
 # 🎵 Spotify Clone
 
-<img src="./src/assets/cover.png" alt="Spotify Clone Banner" width="100%" />
-
+<p align="center">
+  <img src="./public/cover.png" alt="Spotify Clone Banner" width="100%">
+</p>
 <br>
 
 ### A modern Spotify-inspired music streaming web application built with React + Vite
