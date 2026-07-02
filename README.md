@@ -2,8 +2,9 @@
 
 # 🎵 Spotify Clone
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Kamron5505/Spotify-clone/main/src/assets/images/cover.webp" alt="Spotify Clone Banner" width="100%">
+  <img src="https://github.com/Kamron5505/Spotify-clone/blob/main/src/assets/images/cover.webp?raw=true" alt="Spotify Clone Banner" width="100%">
 </p>
+
 
 <br>
 
