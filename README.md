@@ -2,7 +2,7 @@
 
 # 🎵 Spotify Clone
 
-<img src="./assets/cover.png" alt="Spotify Clone Banner" width="100%" />
+<img src="./src/assets/cover.png" alt="Spotify Clone Banner" width="100%" />
 
 <br>
 
