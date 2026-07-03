@@ -1,6 +1,8 @@
-import React, { useContext, useRef } from "react";
+import React, { useContext, useRef, useState } from "react";
 import { PlayerContext } from "../context/PlayerContext";
+import { useToast } from "../context/ToastContext";
 import { assets } from "../assets/assets";
+import QueuePanel from "./QueuePanel";
 
 const Player = () => {
     const {
@@ -20,9 +22,13 @@ const Player = () => {
         toggleShuffle,
         repeat,
         toggleRepeat,
+        likedSongs,
+        toggleLike,
     } = useContext(PlayerContext);
 
+    const { showToast } = useToast();
     const volumeBgRef = useRef(null);
+    const [showQueue, setShowQueue] = useState(false);
 
     const handleVolumeClick = (e) => {
         if (!volumeBgRef.current) return;
@@ -96,9 +102,24 @@ const Player = () => {
             </div>
 
             <div className="hidden lg:flex items-center gap-2 min-w-[180px] justify-end">
-                <img className="w-4 opacity-60" src={assets.plays_icon} alt="plays" />
-                <img className="w-4 opacity-60" src={assets.mic_icon} alt="mic" />
-                <img className="w-4 opacity-60" src={assets.queue_icon} alt="queue" />
+                <img
+                    onClick={() => toggleLike(track.id)}
+                    className={`w-4 cursor-pointer transition ${likedSongs.includes(track.id) ? 'opacity-100 brightness-150' : 'opacity-60 hover:opacity-100'}`}
+                    src={assets.plays_icon}
+                    alt="like"
+                />
+                <img
+                    onClick={() => showToast('Lyrics — coming soon!')}
+                    className="w-4 cursor-pointer opacity-60 hover:opacity-100 transition"
+                    src={assets.mic_icon}
+                    alt="lyrics"
+                />
+                <img
+                    onClick={() => setShowQueue(prev => !prev)}
+                    className={`w-4 cursor-pointer transition ${showQueue ? 'opacity-100 brightness-150' : 'opacity-60 hover:opacity-100'}`}
+                    src={assets.queue_icon}
+                    alt="queue"
+                />
                 <img
                     onClick={() => changeVolume(volume > 0 ? 0 : 1)}
                     className="w-4 cursor-pointer opacity-60 hover:opacity-100 transition"
@@ -115,9 +136,27 @@ const Player = () => {
                         style={{ width: `${volume * 100}%` }}
                     ></div>
                 </div>
-                <img className="w-4 opacity-60" src={assets.mini_player_icon} alt="mini player" />
-                <img className="w-4 opacity-60" src={assets.zoom_icon} alt="zoom" />
+                <img
+                    onClick={() => showToast('Mini player — coming soon!')}
+                    className="w-4 cursor-pointer opacity-60 hover:opacity-100 transition"
+                    src={assets.mini_player_icon}
+                    alt="mini player"
+                />
+                <img
+                    onClick={() => {
+                        if (!document.fullscreenElement) {
+                            document.documentElement.requestFullscreen().catch(() => {});
+                        } else {
+                            document.exitFullscreen().catch(() => {});
+                        }
+                    }}
+                    className="w-4 cursor-pointer opacity-60 hover:opacity-100 transition"
+                    src={assets.zoom_icon}
+                    alt="fullscreen"
+                />
             </div>
+
+            {showQueue && <QueuePanel onClose={() => setShowQueue(false)} />}
         </div>
     );
 };

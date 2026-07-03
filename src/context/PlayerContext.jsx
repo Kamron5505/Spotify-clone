@@ -52,6 +52,14 @@ const PlayerContextProvider = (props) => {
     const [volume, setVolume] = useState(1);
     const [shuffle, setShuffle] = useState(false);
     const [repeat, setRepeat] = useState('off');
+    const [queue, setQueue] = useState([]);
+    const [queueIndex, setQueueIndex] = useState(-1);
+    const [likedSongs, setLikedSongs] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('likedSongs')) || []; } catch { return []; }
+    });
+    const [playlists, setPlaylists] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('playlists')) || []; } catch { return []; }
+    });
     const [time, setTime] = useState({
         currentTime: { minute: 0, second: 0 },
         totalTime: { minute: 0, second: 0 },
@@ -81,32 +89,34 @@ const PlayerContextProvider = (props) => {
             return;
         }
 
-        const currentIndex = songsData.findIndex(s => s.id === track.id);
-        let nextIndex;
+        const activeList = queue.length > 0 ? queue : songsData;
+        const currentIdx = queue.length > 0 ? queueIndex : activeList.findIndex(s => s.id === track.id);
+        let nextIdx;
 
         if (shuffle) {
             let rand;
             do {
-                rand = Math.floor(Math.random() * songsData.length);
-            } while (rand === currentIndex && songsData.length > 1);
-            nextIndex = rand;
+                rand = Math.floor(Math.random() * activeList.length);
+            } while (rand === currentIdx && activeList.length > 1);
+            nextIdx = rand;
         } else {
-            nextIndex = (currentIndex + 1) % songsData.length;
+            nextIdx = (currentIdx + 1) % activeList.length;
         }
 
-        if (!shuffle && repeat === 'off' && nextIndex === 0 && currentIndex === songsData.length - 1) {
+        if (!shuffle && repeat === 'off' && nextIdx === 0 && currentIdx === activeList.length - 1) {
             setPlayStatus(false);
             return;
         }
 
-        const song = songsData[nextIndex];
-        if (!audioRef.current) return;
+        const song = activeList[nextIdx];
+        if (!audioRef.current || !song) return;
         audioRef.current.pause();
         audioRef.current.src = song.file;
         audioRef.current.play().catch(() => { setPlayStatus(false); });
         setTrack(song);
+        if (queue.length > 0) setQueueIndex(nextIdx);
         setPlayStatus(true);
-    }, [track, songsData, shuffle, repeat]);
+    }, [track, songsData, queue, queueIndex, shuffle, repeat]);
 
     const previous = useCallback(() => {
         if (audioRef.current && audioRef.current.currentTime > 3) {
@@ -114,16 +124,18 @@ const PlayerContextProvider = (props) => {
             return;
         }
 
-        const currentIndex = songsData.findIndex(s => s.id === track.id);
-        const prevIndex = (currentIndex - 1 + songsData.length) % songsData.length;
-        const song = songsData[prevIndex];
-        if (!audioRef.current) return;
+        const activeList = queue.length > 0 ? queue : songsData;
+        const currentIdx = queue.length > 0 ? queueIndex : activeList.findIndex(s => s.id === track.id);
+        const prevIdx = (currentIdx - 1 + activeList.length) % activeList.length;
+        const song = activeList[prevIdx];
+        if (!audioRef.current || !song) return;
         audioRef.current.pause();
         audioRef.current.src = song.file;
         audioRef.current.play().catch(() => { setPlayStatus(false); });
         setTrack(song);
+        if (queue.length > 0) setQueueIndex(prevIdx);
         setPlayStatus(true);
-    }, [track, songsData]);
+    }, [track, songsData, queue, queueIndex]);
 
     const seekSong = useCallback((e) => {
         if (!audioRef.current || !seekBg.current) return;
@@ -153,6 +165,91 @@ const PlayerContextProvider = (props) => {
         if (audioRef.current) {
             audioRef.current.volume = clamped;
         }
+    }, []);
+
+    const playTrack = useCallback((trackObj) => {
+        if (!audioRef.current) return;
+        audioRef.current.pause();
+        audioRef.current.src = trackObj.file;
+        audioRef.current.play().catch(() => { setPlayStatus(false); });
+        setTrack(trackObj);
+        setPlayStatus(true);
+    }, []);
+
+    const setQueueAndPlay = useCallback((songs, startIndex) => {
+        setQueue(songs);
+        setQueueIndex(startIndex);
+        const song = songs[startIndex];
+        if (!song || !audioRef.current) return;
+        audioRef.current.pause();
+        audioRef.current.src = song.file;
+        audioRef.current.play().catch(() => { setPlayStatus(false); });
+        setTrack(song);
+        setPlayStatus(true);
+    }, []);
+
+    const addToQueue = useCallback((trackObj) => {
+        setQueue(prev => [...prev, trackObj]);
+    }, []);
+
+    const playFromQueue = useCallback((index) => {
+        if (index < 0 || index >= queue.length) return;
+        setQueueIndex(index);
+        const song = queue[index];
+        if (!audioRef.current) return;
+        audioRef.current.pause();
+        audioRef.current.src = song.file;
+        audioRef.current.play().catch(() => { setPlayStatus(false); });
+        setTrack(song);
+        setPlayStatus(true);
+    }, [queue]);
+
+    const toggleLike = useCallback((songId) => {
+        setLikedSongs(prev => {
+            const next = prev.includes(songId) ? prev.filter(id => id !== songId) : [...prev, songId];
+            localStorage.setItem('likedSongs', JSON.stringify(next));
+            return next;
+        });
+    }, []);
+
+    const createPlaylist = useCallback((name) => {
+        const newPlaylist = { id: Date.now().toString(), name, songs: [] };
+        setPlaylists(prev => {
+            const next = [...prev, newPlaylist];
+            localStorage.setItem('playlists', JSON.stringify(next));
+            return next;
+        });
+        return newPlaylist;
+    }, []);
+
+    const addToPlaylist = useCallback((playlistId, songId) => {
+        setPlaylists(prev => {
+            const next = prev.map(p =>
+                p.id === playlistId && !p.songs.includes(songId)
+                    ? { ...p, songs: [...p.songs, songId] }
+                    : p
+            );
+            localStorage.setItem('playlists', JSON.stringify(next));
+            return next;
+        });
+    }, []);
+
+    const removeFromPlaylist = useCallback((playlistId, songId) => {
+        setPlaylists(prev => {
+            const next = prev.map(p =>
+                p.id === playlistId ? { ...p, songs: p.songs.filter(id => id !== songId) } : p
+            );
+            localStorage.setItem('playlists', JSON.stringify(next));
+            return next;
+        });
+    }, []);
+
+    const deletePlaylist = useCallback((playlistId) => {
+        setPlaylists(prev => {
+            const next = prev.filter(p => p.id !== playlistId);
+            localStorage.setItem('playlists', JSON.stringify(next));
+            return next;
+        });
     }, []);
 
     const toggleShuffle = useCallback(() => setShuffle(prev => !prev), []);
@@ -256,6 +353,19 @@ const PlayerContextProvider = (props) => {
         toggleShuffle,
         repeat,
         toggleRepeat,
+        playTrack,
+        queue,
+        queueIndex,
+        setQueueAndPlay,
+        addToQueue,
+        playFromQueue,
+        likedSongs,
+        toggleLike,
+        playlists,
+        createPlaylist,
+        addToPlaylist,
+        removeFromPlaylist,
+        deletePlaylist,
     };
 
     return (

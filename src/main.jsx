@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.jsx'
 import { BrowserRouter } from 'react-router-dom'
 import PlayerContextProvider from './context/PlayerContext.jsx'
+import ToastProvider from './context/ToastContext.jsx'
 
 import { registerSW } from 'virtual:pwa-register'
 
@@ -17,7 +18,9 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <PlayerContextProvider>
-        <App />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </PlayerContextProvider>
     </BrowserRouter>
   </StrictMode>
