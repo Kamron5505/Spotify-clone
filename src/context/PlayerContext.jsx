@@ -1,4 +1,4 @@
-import React, { createContext, useRef, useState, useEffect } from "react";
+import React, { createContext, useRef, useState, useEffect, useCallback } from "react";
 import { songsData as baseSongsData } from "../assets/assets";
 
 export const PlayerContext = createContext();
@@ -14,7 +14,7 @@ const PlayerContextProvider = (props) => {
     const premiumSongs = [
         {
             id: 100,
-            name: "Blinding Lights",
+            name: "Blinding Lights (Premium)",
             image: baseSongsData[0].image,
             file: baseSongsData[0].file,
             desc: "Experience the magic of Premium sound",
@@ -49,50 +49,83 @@ const PlayerContextProvider = (props) => {
 
     const [track, setTrack] = useState(songsData[0]);
     const [playStatus, setPlayStatus] = useState(false);
+    const [volume, setVolume] = useState(1);
+    const [shuffle, setShuffle] = useState(false);
+    const [repeat, setRepeat] = useState('off');
     const [time, setTime] = useState({
         currentTime: { minute: 0, second: 0 },
         totalTime: { minute: 0, second: 0 },
     });
 
-    const play = () => {
-        try {
-            audioRef.current.play();
-            setPlayStatus(true);
-        } catch (err) { }
-    };
+    const play = useCallback(() => {
+        if (!audioRef.current) return;
+        audioRef.current.play().catch(() => {
+            setPlayStatus(false);
+        });
+        setPlayStatus(true);
+    }, []);
 
-    const next = () => {
+    const pause = useCallback(() => {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            setPlayStatus(false);
+        }
+    }, []);
+
+    const next = useCallback(() => {
+        if (repeat === 'one') {
+            if (audioRef.current) {
+                audioRef.current.currentTime = 0;
+                audioRef.current.play().catch(() => {});
+            }
+            return;
+        }
+
         const currentIndex = songsData.findIndex(s => s.id === track.id);
-        const nextIndex = (currentIndex + 1) % songsData.length;
+        let nextIndex;
+
+        if (shuffle) {
+            let rand;
+            do {
+                rand = Math.floor(Math.random() * songsData.length);
+            } while (rand === currentIndex && songsData.length > 1);
+            nextIndex = rand;
+        } else {
+            nextIndex = (currentIndex + 1) % songsData.length;
+        }
+
+        if (!shuffle && repeat === 'off' && nextIndex === 0 && currentIndex === songsData.length - 1) {
+            setPlayStatus(false);
+            return;
+        }
+
         const song = songsData[nextIndex];
         if (!audioRef.current) return;
         audioRef.current.pause();
         audioRef.current.src = song.file;
-        audioRef.current.play();
+        audioRef.current.play().catch(() => { setPlayStatus(false); });
         setTrack(song);
         setPlayStatus(true);
-    };
+    }, [track, songsData, shuffle, repeat]);
 
-    const previous = () => {
+    const previous = useCallback(() => {
+        if (audioRef.current && audioRef.current.currentTime > 3) {
+            audioRef.current.currentTime = 0;
+            return;
+        }
+
         const currentIndex = songsData.findIndex(s => s.id === track.id);
         const prevIndex = (currentIndex - 1 + songsData.length) % songsData.length;
         const song = songsData[prevIndex];
         if (!audioRef.current) return;
         audioRef.current.pause();
         audioRef.current.src = song.file;
-        audioRef.current.play();
+        audioRef.current.play().catch(() => { setPlayStatus(false); });
         setTrack(song);
         setPlayStatus(true);
-    };
+    }, [track, songsData]);
 
-    const pause = () => {
-        if (audioRef.current) {
-            audioRef.current.pause();
-            setPlayStatus(false);
-        }
-    };
-
-    const seekSong = (e) => {
+    const seekSong = useCallback((e) => {
         if (!audioRef.current || !seekBg.current) return;
         const width = seekBg.current.offsetWidth;
         const clickX = e.nativeEvent.offsetX;
@@ -102,19 +135,35 @@ const PlayerContextProvider = (props) => {
         if (seekBar.current) {
             seekBar.current.style.width = `${(clickX / width) * 100}%`;
         }
-    };
+    }, []);
 
-    const playWithId = (id) => {
+    const playWithId = useCallback((id) => {
         const song = songsData.find((s) => s.id === id);
-        if (!song) return;
-        if (audioRef.current) audioRef.current.pause();
-        audioRef.current = new Audio(song.file);
-        try {
-            audioRef.current.play();
-            setTrack(song);
-            setPlayStatus(true);
-        } catch (err) { }
-    };
+        if (!song || !audioRef.current) return;
+        audioRef.current.pause();
+        audioRef.current.src = song.file;
+        audioRef.current.play().catch(() => { setPlayStatus(false); });
+        setTrack(song);
+        setPlayStatus(true);
+    }, [songsData]);
+
+    const changeVolume = useCallback((newVolume) => {
+        const clamped = Math.max(0, Math.min(1, newVolume));
+        setVolume(clamped);
+        if (audioRef.current) {
+            audioRef.current.volume = clamped;
+        }
+    }, []);
+
+    const toggleShuffle = useCallback(() => setShuffle(prev => !prev), []);
+
+    const toggleRepeat = useCallback(() => {
+        setRepeat(prev => {
+            if (prev === 'off') return 'all';
+            if (prev === 'all') return 'one';
+            return 'off';
+        });
+    }, []);
 
     useEffect(() => {
         const audio = audioRef.current;
@@ -136,9 +185,51 @@ const PlayerContextProvider = (props) => {
                 seekBar.current.style.width = `${(cur / dur) * 100}%`;
             }
         };
+        const handleEnded = () => { next(); };
+
         audio.addEventListener("timeupdate", updateTime);
-        return () => audio.removeEventListener("timeupdate", updateTime);
-    }, [track]);
+        audio.addEventListener("ended", handleEnded);
+        return () => {
+            audio.removeEventListener("timeupdate", updateTime);
+            audio.removeEventListener("ended", handleEnded);
+        };
+    }, [track, next]);
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+            switch (e.code) {
+                case 'Space':
+                    e.preventDefault();
+                    if (playStatus) { pause(); } else { play(); }
+                    break;
+                case 'ArrowRight':
+                    if (e.shiftKey) {
+                        e.preventDefault();
+                        next();
+                    }
+                    break;
+                case 'ArrowLeft':
+                    if (e.shiftKey) {
+                        e.preventDefault();
+                        previous();
+                    }
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    changeVolume(volume + 0.1);
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    changeVolume(volume - 0.1);
+                    break;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [playStatus, volume, play, pause, next, previous, changeVolume]);
 
     const contextValue = {
         audioRef,
@@ -159,12 +250,18 @@ const PlayerContextProvider = (props) => {
         isPremium,
         setIsPremium,
         songsData,
+        volume,
+        changeVolume,
+        shuffle,
+        toggleShuffle,
+        repeat,
+        toggleRepeat,
     };
 
     return (
         <PlayerContext.Provider value={contextValue}>
             {props.children}
-            <audio ref={audioRef} src={track.file}></audio>
+            <audio ref={audioRef} src={track.file} preload="auto"></audio>
         </PlayerContext.Provider>
     );
 };
